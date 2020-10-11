@@ -1,11 +1,24 @@
 # Autonomous Decision Making Dense Traffic
-ENPM690 final project
 
 # Dependencies
 This project requires the following libraries:
 - python3 
 - pytorch
 - tensorboardX
+
+To install the binaries for PyTorch 1.6.0, simply run
+
+```sh
+$ pip install torch-scatter==latest+${CUDA} -f https://pytorch-geometric.com/whl/torch-1.6.0.html
+$ pip install torch-sparse==latest+${CUDA} -f https://pytorch-geometric.com/whl/torch-1.6.0.html
+$ pip install torch-cluster==latest+${CUDA} -f https://pytorch-geometric.com/whl/torch-1.6.0.html
+$ pip install torch-spline-conv==latest+${CUDA} -f https://pytorch-geometric.com/whl/torch-1.6.0.html
+$ pip install torch-geometric
+```
+
+where `${CUDA}` should be replaced by `cpu` depending on your PyTorch installation.
+
+For instructions compatible with older PyTorch versions, documentation and examples, go *[here](https://github.com/rusty1s/pytorch_geometric)*.
 
 # Build instructions
 First build the code using the following commands:

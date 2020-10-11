@@ -2,6 +2,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 from torch.nn import functional as F
+from torch_geometric.nn import GCNConv
 
 from rl_agents.configuration import Configurable
 
@@ -74,6 +75,40 @@ class MultiLayerPerceptron(BaseModule, Configurable):
             x = self.predict(x)
         return x
 
+class GraphConvolutionalNetwork(BaseModule, Configurable):
+'''
+	Implements simple 2-layer GCN from https://pytorch-geometric.readthedocs.io/en/latest/notes/introduction.html.
+	Gets input size, number of hidden units and output units from config file.
+	
+	TO-DO: Make modular.
+'''
+    def __init__(self, config):
+        super().__init__()
+        Configurable.__init__(self, config)
+        # sizes = [self.config["in"]] + self.config["layers"] + [self.config["out"]]
+        # self.activation = activation_factory(self.config["activation"])
+	# layers_list = [GCNConv(sizes[i], sizes[i + 1]) for i in range(len(sizes) - 1)]
+        # self.layers = nn.ModuleList(layers_list)
+	self.conv1 = GCNConv(self.config["in"], self.config["layers"])
+	self.conv2 = GCNConv(self.config["layers"], self.config["out"])
+
+    @classmethod
+    def default_config(cls):
+        return {"in": None,
+                "layers": [16],
+                "activation": "RELU",
+                "reshape": "False",
+                "out": None}
+
+    def forward(self, data):
+	x, edge_index = data.x, data.edge_index
+
+        x = self.conv1(x, edge_index)
+        x = F.relu(x)
+	x = F.dropout(x, training=self.training)
+	x = self.conv2(x, edge_index)
+
+        return F.log_softmax(x, dim=1)
 
 class DuelingNetwork(BaseModule, Configurable):
     def __init__(self, config):
@@ -427,6 +462,8 @@ def model_factory(config: dict) -> nn.Module:
         return ConvolutionalNetwork(config)
     elif config["type"] == "EgoAttentionNetwork":
         return EgoAttentionNetwork(config)
+    elif config["type"] == "GraphConvolutionalNetwork":
+        return GraphConvolutionalNetwork(config)
     else:
         raise ValueError("Unknown model type")
 
