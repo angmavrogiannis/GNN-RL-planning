@@ -1,8 +1,8 @@
 gym
-matplotlib
 numpy
-pandas
 pygame
+matplotlib
+pandas
 
 [deploy]
 pytest-runner

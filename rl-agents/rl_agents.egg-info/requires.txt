@@ -1,13 +1,13 @@
-docopt
 gym
-matplotlib
 numpy
 pandas
 pygame
+matplotlib
 seaborn
 six
-tensorboardX
+docopt
 torch>=1.2.0
+tensorboardX
 
 [dev]
 scipy

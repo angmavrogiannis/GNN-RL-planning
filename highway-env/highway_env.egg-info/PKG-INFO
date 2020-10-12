@@ -13,5 +13,5 @@ Classifier: Development Status :: 3 - Alpha
 Classifier: Intended Audience :: Researchers
 Classifier: License :: OSI Approved :: MIT License
 Classifier: Programming Language :: Python :: 3.6
-Provides-Extra: deploy
 Provides-Extra: dev
+Provides-Extra: deploy
