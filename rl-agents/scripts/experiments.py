@@ -18,8 +18,6 @@ Options:
   --verbose              Set log level to debug instead of info.
   --repeat <times>       Repeat several times [default: 1].
 """
-import sys
-print(sys.version)
 import datetime
 import os
 from pathlib import Path
@@ -31,7 +29,6 @@ from multiprocessing.pool import Pool
 
 from rl_agents.trainer import logger
 from rl_agents.trainer.evaluation import Evaluation
-print('test')
 from rl_agents.agents.common.factory import load_agent, load_environment
 
 BENCHMARK_FILE = 'benchmark_summary'

@@ -76,12 +76,12 @@ class MultiLayerPerceptron(BaseModule, Configurable):
         return x
 
 class GraphConvolutionalNetwork(BaseModule, Configurable):
-'''
-	Implements simple 2-layer GCN from https://pytorch-geometric.readthedocs.io/en/latest/notes/introduction.html.
-	Gets input size, number of hidden units and output units from config file.
-	
-	TO-DO: Make modular.
-'''
+    """
+        Implements simple 2-layer GCN from https://pytorch-geometric.readthedocs.io/en/latest/notes/introduction.html.
+        Gets input size, number of hidden units and output units from config file.
+
+        TO-DO: Make modular.
+    """
     def __init__(self, config):
         super().__init__()
         Configurable.__init__(self, config)
@@ -89,8 +89,8 @@ class GraphConvolutionalNetwork(BaseModule, Configurable):
         # self.activation = activation_factory(self.config["activation"])
 	# layers_list = [GCNConv(sizes[i], sizes[i + 1]) for i in range(len(sizes) - 1)]
         # self.layers = nn.ModuleList(layers_list)
-	self.conv1 = GCNConv(self.config["in"], self.config["layers"])
-	self.conv2 = GCNConv(self.config["layers"], self.config["out"])
+        self.conv1 = GCNConv(self.config["in"], self.config["layers"])
+        self.conv2 = GCNConv(self.config["layers"], self.config["out"])
 
     @classmethod
     def default_config(cls):
@@ -101,12 +101,12 @@ class GraphConvolutionalNetwork(BaseModule, Configurable):
                 "out": None}
 
     def forward(self, data):
-	x, edge_index = data.x, data.edge_index
+        x, edge_index = data.x, data.edge_index
 
         x = self.conv1(x, edge_index)
         x = F.relu(x)
-	x = F.dropout(x, training=self.training)
-	x = self.conv2(x, edge_index)
+        x = F.dropout(x, training=self.training)
+        x = self.conv2(x, edge_index)
 
         return F.log_softmax(x, dim=1)
 
@@ -466,4 +466,3 @@ def model_factory(config: dict) -> nn.Module:
         return GraphConvolutionalNetwork(config)
     else:
         raise ValueError("Unknown model type")
-
