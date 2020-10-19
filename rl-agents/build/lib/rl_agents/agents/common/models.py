@@ -3,6 +3,8 @@ import torch
 import torch.nn as nn
 from torch.nn import functional as F
 from torch_geometric.nn import GCNConv
+from torch_geometric.data import Data, DataLoader
+from math import sqrt
 
 from rl_agents.configuration import Configurable
 
@@ -67,6 +69,10 @@ class MultiLayerPerceptron(BaseModule, Configurable):
                 "out": None}
 
     def forward(self, x):
+        print("x shape 0 is: ", x.shape[0])
+        stop = False
+        if x.shape[0] == 32:
+            stop = True
         if self.config["reshape"]:
             x = x.reshape(x.shape[0], -1)  # We expect a batch of vectors
         for layer in self.layers:
@@ -80,17 +86,17 @@ class GraphConvolutionalNetwork(BaseModule, Configurable):
         Implements simple 2-layer GCN from https://pytorch-geometric.readthedocs.io/en/latest/notes/introduction.html.
         Gets input size, number of hidden units and output units from config file.
 
-        TO-DO: Make modular.
     """
     def __init__(self, config):
         super().__init__()
         Configurable.__init__(self, config)
-        # sizes = [self.config["in"]] + self.config["layers"] + [self.config["out"]]
-        # self.activation = activation_factory(self.config["activation"])
-	# layers_list = [GCNConv(sizes[i], sizes[i + 1]) for i in range(len(sizes) - 1)]
-        # self.layers = nn.ModuleList(layers_list)
-        self.conv1 = GCNConv(self.config["in"], self.config["layers"])
-        self.conv2 = GCNConv(self.config["layers"], self.config["out"])
+        sizes = [self.config["in"]] + self.config["layers"] + [self.config["out"]]
+        self.activation = activation_factory(self.config["activation"])
+        self.dropout = True
+        layers_list = [GCNConv(sizes[i], sizes[i + 1]) for i in range(len(sizes) - 1)]
+        self.layers = nn.ModuleList(layers_list)
+        if self.config.get("out", None):
+            self.predict = nn.Linear(sizes[-1], self.config["out"])
 
     @classmethod
     def default_config(cls):
@@ -100,15 +106,59 @@ class GraphConvolutionalNetwork(BaseModule, Configurable):
                 "reshape": "False",
                 "out": None}
 
+    def calcEuclDistance(self, x1, y1, x2, y2):
+        '''
+                Calculates the Euclidean distance given the coordinates
+                of two points.
+        '''
+        return sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2)
+
+    def handleData(self, data, radius=15):
+        '''
+                Generates the adjacency matrix of a graph.
+
+                Input:
+
+                data: V x F 2D array
+                         V: number of vehicles
+                         F: number of features (assuming "presence", "x", "y", "vx", "vy")
+
+                radius: determines minimum distance between vehicles 
+                for them to be considered neighbors
+        '''
+        batch_size = data.shape[0]
+        num_vehicles = data.shape[1]
+        data_list = []
+        for k in range(batch_size):
+            edge_index = [[], []]
+            for i in range(num_vehicles):
+                for j in range(i + 1, num_vehicles):
+                    if self.calcEuclDistance(data[k][i][1].item(), data[k][i][2].item(), data[k][j][1].item(), data[k][j][2].item()) <= radius:
+                        if data[k][i][0].item() != 0 and data[k][j][0].item() != 0:
+                            edge_index[0].append(i)
+                            edge_index[1].append(j)
+                            edge_index[0].append(j)
+                            edge_index[1].append(i)
+            data_list.append(Data(x = data[k], edge_index = torch.tensor(edge_index, dtype=torch.long)))
+        return data_list
+
     def forward(self, data):
-        x, edge_index = data.x, data.edge_index
-
-        x = self.conv1(x, edge_index)
-        x = F.relu(x)
-        x = F.dropout(x, training=self.training)
-        x = self.conv2(x, edge_index)
-
-        return F.log_softmax(x, dim=1)
+        data = self.handleData(data)
+        loader = DataLoader(data, batch_size=1)
+        out = torch.empty
+        for batched_data in loader:
+            x, edge_index = batched_data.x, batched_data.edge_index
+            for ind, layer in enumerate(self.layers):
+                x = self.activation(layer(x, edge_index))
+                if ind < len(self.layers) - 1 and self.dropout:
+                    x = F.dropout(x, training=self.training)
+            if self.config.get("out", None):
+                x = self.predict(x)
+            if out == torch.empty:
+                out = x[0].unsqueeze(0)
+            else:
+                out = torch.cat((out, x[0].unsqueeze(0)))
+        return out
 
 class DuelingNetwork(BaseModule, Configurable):
     def __init__(self, config):
@@ -448,6 +498,8 @@ def size_model_config(env, model_config):
         model_config["in_channels"] = int(env.observation_space.shape[0])
         model_config["in_height"] = int(env.observation_space.shape[1])
         model_config["in_width"] = int(env.observation_space.shape[2])
+    elif model_config["type"] == "GraphConvolutionalNetwork":
+        model_config["in"] = int(env.observation_space.shape[0])
     else:
         model_config["in"] = int(np.prod(env.observation_space.shape))
     model_config["out"] = env.action_space.n

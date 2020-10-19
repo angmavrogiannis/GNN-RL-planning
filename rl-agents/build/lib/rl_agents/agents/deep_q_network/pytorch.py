@@ -66,7 +66,6 @@ class DQNAgent(AbstractDQNAgent):
                 next_state_values[~batch.terminal] = best_values[~batch.terminal]
                 # Compute the expected Q values
                 target_state_action_value = batch.reward + self.config["gamma"] * next_state_values
-
         # Compute loss
         loss = self.loss_function(state_action_values, target_state_action_value)
         return loss, target_state_action_value, batch

@@ -28,7 +28,6 @@ class DQNGraphics(object):
         import pygame
         action_values = agent.get_state_action_values(agent.previous_state)
         action_distribution = agent.action_distribution(agent.previous_state)
-
         cell_size = (surface.get_width() // len(action_values), surface.get_height())
         pygame.draw.rect(surface, cls.BLACK, (0, 0, surface.get_width(), surface.get_height()), 0)
 
