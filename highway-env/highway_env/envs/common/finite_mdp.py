@@ -1,18 +1,15 @@
+from __future__ import division, print_function
+
 import importlib
 from functools import partial
-from typing import TYPE_CHECKING
-
 import numpy as np
 
 from highway_env import utils
 
-if TYPE_CHECKING:
-    from highway_env.envs import AbstractEnv
 
-
-def finite_mdp(env: 'AbstractEnv',
-               time_quantization: float = 1.,
-               horizon: float = 10.) -> object:
+def finite_mdp(env,
+               time_quantization=1.,
+               horizon=10.):
     """
         Time-To-Collision (TTC) representation of the state.
 
@@ -77,8 +74,7 @@ def finite_mdp(env: 'AbstractEnv',
         raise ModuleNotFoundError("The finite_mdp module is required for conversion. {}".format(e))
 
 
-def compute_ttc_grid(env: 'AbstractEnv', time_quantization: float, horizon: float, considered_lanes: str = "all") \
-        -> np.ndarray:
+def compute_ttc_grid(env, time_quantization, horizon, considered_lanes="all"):
     """
         For each ego-velocity and lane, compute the predicted time-to-collision to each vehicle within the lane and
         store the results in an occupancy grid.
@@ -115,7 +111,7 @@ def compute_ttc_grid(env: 'AbstractEnv', time_quantization: float, horizon: floa
     return grid
 
 
-def transition_model(h: int, i: int, j: int, a: int, grid: np.ndarray) -> np.ndarray:
+def transition_model(h, i, j, a, grid):
     """
         Deterministic transition from a position in the grid to the next.
 
@@ -138,7 +134,7 @@ def transition_model(h: int, i: int, j: int, a: int, grid: np.ndarray) -> np.nda
     return next_state
 
 
-def clip_position(h: int, i: int, j: int, grid: np.ndarray) -> np.ndarray:
+def clip_position(h, i, j, grid):
     """
         Clip a position in the TTC grid, so that it stays within bounds.
 

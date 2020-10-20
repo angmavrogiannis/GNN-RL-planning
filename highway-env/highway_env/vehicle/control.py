@@ -1,10 +1,8 @@
-from typing import List, Tuple
-
+from __future__ import division, print_function
 import numpy as np
 import copy
 from highway_env import utils
-from highway_env.road.road import Road, LaneIndex, Route
-from highway_env.vehicle.kinematics import Vehicle
+from highway_env.vehicle.dynamics import Vehicle
 
 
 class ControlledVehicle(Vehicle):
@@ -21,26 +19,26 @@ class ControlledVehicle(Vehicle):
     PURSUIT_TAU = 1.5*TAU_DS  # [s]
     KP_A = 1 / TAU_A
     KP_HEADING = 1 / TAU_DS
-    KP_LATERAL = 1/3 * KP_HEADING  # [1/s]
+    KP_LATERAL = 1 / 0.5  # [1/s]
     MAX_STEERING_ANGLE = np.pi / 3  # [rad]
 
-    DELTA_VELOCITY = 5  # [m/s]
+    DELTA_VELOCITY = 10  # [m/s]
 
     def __init__(self,
-                 road: Road,
-                 position: List[float],
-                 heading: float = 0,
-                 velocity: float = 0,
-                 target_lane_index: LaneIndex = None,
-                 target_velocity: float = None,
-                 route: Route = None):
-        super().__init__(road, position, heading, velocity)
+                 road,
+                 position,
+                 heading=0,
+                 velocity=0,
+                 target_lane_index=None,
+                 target_velocity=None,
+                 route=None):
+        super(ControlledVehicle, self).__init__(road, position, heading, velocity)
         self.target_lane_index = target_lane_index or self.lane_index
         self.target_velocity = target_velocity or self.velocity
         self.route = route
 
     @classmethod
-    def create_from(cls, vehicle: "ControlledVehicle") -> "ControlledVehicle":
+    def create_from(cls, vehicle):
         """
             Create a new vehicle from an existing one.
             The vehicle dynamics and target dynamics are copied, other properties are default.
@@ -53,23 +51,20 @@ class ControlledVehicle(Vehicle):
                 route=vehicle.route)
         return v
 
-    def plan_route_to(self, destination: str) -> "ControlledVehicle":
+    def plan_route_to(self, destination):
         """
             Plan a route to a destination in the road network
 
         :param destination: a node in the road network
         """
-        try:
-            path = self.road.network.shortest_path(self.lane_index[1], destination)
-        except KeyError:
-            path = []
+        path = self.road.network.shortest_path(self.lane_index[1], destination)
         if path:
             self.route = [self.lane_index] + [(path[i], path[i + 1], None) for i in range(len(path) - 1)]
         else:
             self.route = [self.lane_index]
         return self
 
-    def act(self, action: dict = None) -> None:
+    def act(self, action=None):
         """
             Perform a high-level action to change the desired lane or velocity.
 
@@ -83,6 +78,8 @@ class ControlledVehicle(Vehicle):
             self.target_velocity += self.DELTA_VELOCITY
         elif action == "SLOWER":
             self.target_velocity -= self.DELTA_VELOCITY
+        # elif action == "STOP":
+        #     self.target_velocity = 0
         elif action == "LANE_RIGHT":
             _from, _to, _id = self.target_lane_index
             target_lane_index = _from, _to, np.clip(_id + 1, 0, len(self.road.network.graph[_from][_to]) - 1)
@@ -93,13 +90,11 @@ class ControlledVehicle(Vehicle):
             target_lane_index = _from, _to, np.clip(_id - 1, 0, len(self.road.network.graph[_from][_to]) - 1)
             if self.road.network.get_lane(target_lane_index).is_reachable_from(self.position):
                 self.target_lane_index = target_lane_index
+        action = {'steering': self.steering_control(self.target_lane_index),
+                  'acceleration': self.velocity_control(self.target_velocity)}
+        super(ControlledVehicle, self).act(action)
 
-        action = {"steering": self.steering_control(self.target_lane_index),
-                  "acceleration": self.velocity_control(self.target_velocity)}
-        action['steering'] = np.clip(action['steering'], -self.MAX_STEERING_ANGLE, self.MAX_STEERING_ANGLE)
-        super().act(action)
-
-    def follow_road(self) -> None:
+    def follow_road(self):
         """
            At the end of a lane, automatically switch to a next one.
         """
@@ -109,7 +104,7 @@ class ControlledVehicle(Vehicle):
                                                                  position=self.position,
                                                                  np_random=self.road.np_random)
 
-    def steering_control(self, target_lane_index: LaneIndex) -> float:
+    def steering_control(self, target_lane_index):
         """
             Steer the vehicle to follow the center of an given lane.
 
@@ -134,12 +129,11 @@ class ControlledVehicle(Vehicle):
         # Heading control
         heading_rate_command = self.KP_HEADING * utils.wrap_to_pi(heading_ref - self.heading)
         # Heading rate to steering angle
-        steering_angle = np.arcsin(np.clip(self.LENGTH / 2 / utils.not_zero(self.velocity) * heading_rate_command,
-                                           -1, 1))
+        steering_angle = np.arctan(self.LENGTH / utils.not_zero(self.velocity) * heading_rate_command)
         steering_angle = np.clip(steering_angle, -self.MAX_STEERING_ANGLE, self.MAX_STEERING_ANGLE)
-        return float(steering_angle)
+        return steering_angle
 
-    def velocity_control(self, target_velocity: float) -> float:
+    def velocity_control(self, target_velocity):
         """
             Control the velocity of the vehicle.
 
@@ -150,12 +144,15 @@ class ControlledVehicle(Vehicle):
         """
         return self.KP_A * (target_velocity - self.velocity)
 
-    def get_routes_at_intersection(self) -> List[Route]:
+    def set_route_at_intersection(self, _to):
         """
-            Get the list of routes that can be followed at the next intersection.
+            Set the road to be followed at the next intersection.
+            Erase current planned route.
+        :param _to: index of the road to follow at next intersection, in the road network
         """
+
         if not self.route:
-            return []
+            return
         for index in range(min(len(self.route), 3)):
             try:
                 next_destinations = self.road.network.graph[self.route[index][1]]
@@ -164,26 +161,15 @@ class ControlledVehicle(Vehicle):
             if len(next_destinations) >= 2:
                 break
         else:
-            return [self.route]
+            return
         next_destinations_from = list(next_destinations.keys())
-        routes = [self.route[0:index+1] + [(self.route[index][1], destination, self.route[index][2])]
-                  for destination in next_destinations_from]
-        return routes
+        if _to == "random":
+            _to = self.road.np_random.randint(0, len(next_destinations_from))
+        next_index = _to % len(next_destinations_from)
+        self.route = self.route[0:index+1] + \
+                     [(self.route[index][1], next_destinations_from[next_index], self.route[index][2])]
 
-    def set_route_at_intersection(self, _to: int) -> None:
-        """
-            Set the road to be followed at the next intersection.
-            Erase current planned route.
-        :param _to: index of the road to follow at next intersection, in the road network
-        """
-
-        routes = self.get_routes_at_intersection()
-        if routes:
-            if _to == "random":
-                _to = self.road.np_random.randint(len(routes))
-            self.route = routes[_to % len(routes)]
-
-    def predict_trajectory_constant_velocity(self, times: np.ndarray) -> Tuple[List[np.ndarray], List[float]]:
+    def predict_trajectory_constant_velocity(self, times):
         """
             Predict the future positions of the vehicle along its planned route, under constant velocity
         :param times: timesteps of prediction
@@ -191,8 +177,8 @@ class ControlledVehicle(Vehicle):
         """
         coordinates = self.lane.local_coordinates(self.position)
         route = self.route or [self.lane_index]
-        return tuple(zip(*[self.road.network.position_heading_along_route(route, coordinates[0] + self.velocity * t, 0)
-                     for t in times]))
+        return zip(*[self.road.network.position_heading_along_route(route, coordinates[0] + self.velocity * t, 0)
+                     for t in times])
 
 
 class MDPVehicle(ControlledVehicle):
@@ -200,23 +186,23 @@ class MDPVehicle(ControlledVehicle):
         A controlled vehicle with a specified discrete range of allowed target velocities.
     """
 
-    SPEED_COUNT: int = 3  # []
-    SPEED_MIN: float = 20  # [m/s]
-    SPEED_MAX: float = 30  # [m/s]
+    SPEED_COUNT = 3  # []
+    SPEED_MIN = 10  # [m/s]
+    SPEED_MAX = 30  # [m/s]
 
     def __init__(self,
-                 road: Road,
-                 position: List[float],
-                 heading: float = 0,
-                 velocity: float = 0,
-                 target_lane_index: LaneIndex = None,
-                 target_velocity: float = None,
-                 route: Route = None) -> None:
-        super().__init__(road, position, heading, velocity, target_lane_index, target_velocity, route)
+                 road,
+                 position,
+                 heading=0,
+                 velocity=0,
+                 target_lane_index=None,
+                 target_velocity=None,
+                 route=None):
+        super(MDPVehicle, self).__init__(road, position, heading, velocity, target_lane_index, target_velocity, route)
         self.velocity_index = self.speed_to_index(self.target_velocity)
         self.target_velocity = self.index_to_speed(self.velocity_index)
 
-    def act(self, action: str = None) -> None:
+    def act(self, action=None):
         """
             Perform a high-level action.
 
@@ -225,19 +211,20 @@ class MDPVehicle(ControlledVehicle):
 
         :param action: a high-level action
         """
+        # print("action", action['acceleration'])
         if action == "FASTER":
             self.velocity_index = self.speed_to_index(self.velocity) + 1
         elif action == "SLOWER":
             self.velocity_index = self.speed_to_index(self.velocity) - 1
         else:
-            super().act(action)
+            super(MDPVehicle, self).act(action)
             return
         self.velocity_index = np.clip(self.velocity_index, 0, self.SPEED_COUNT - 1)
         self.target_velocity = self.index_to_speed(self.velocity_index)
-        super().act()
+        super(MDPVehicle, self).act()
 
     @classmethod
-    def index_to_speed(cls, index: int) -> float:
+    def index_to_speed(cls, index):
         """
             Convert an index among allowed speeds to its corresponding speed
         :param index: the speed index []
@@ -249,7 +236,7 @@ class MDPVehicle(ControlledVehicle):
             return cls.SPEED_MIN
 
     @classmethod
-    def speed_to_index(cls, speed: float) -> int:
+    def speed_to_index(cls, speed):
         """
             Find the index of the closest speed allowed to a given speed.
         :param speed: an input speed [m/s]
@@ -258,14 +245,13 @@ class MDPVehicle(ControlledVehicle):
         x = (speed - cls.SPEED_MIN) / (cls.SPEED_MAX - cls.SPEED_MIN)
         return np.int(np.clip(np.round(x * (cls.SPEED_COUNT - 1)), 0, cls.SPEED_COUNT - 1))
 
-    def speed_index(self) -> int:
+    def speed_index(self):
         """
             The index of current velocity
         """
         return self.speed_to_index(self.velocity)
 
-    def predict_trajectory(self, actions: List, action_duration: float, trajectory_timestep: float, dt: float) \
-            -> List[ControlledVehicle]:
+    def predict_trajectory(self, actions, action_duration, trajectory_timestep, dt):
         """
             Predict the future trajectory of the vehicle given a sequence of actions.
 
