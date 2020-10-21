@@ -36,7 +36,7 @@ class HighwayEnv(AbstractEnv):
             # aggressive vehicles
             "aggressive_vehicle_type": "highway_env.vehicle.behavior.AggressiveCar",
             "aggressive_vehicle_type2": "highway_env.vehicle.behavior.VeryAggressiveCar",
-            "num_aggressive": 0,
+            "num_aggressive": 15,
             "duration": 60,  # [s]
             "initial_spacing": 1,
             "collision_reward": self.COLLISION_REWARD
@@ -57,7 +57,8 @@ class HighwayEnv(AbstractEnv):
         pos_list = []
         for v in vehicles_list:
             pos_list.append([v.position, v.counter])
-        return super(HighwayEnv, self).step(action), pos_list
+        # removed pos_list from the returned arguments
+        return super(HighwayEnv, self).step(action)
 
     def _create_road(self):
         """
@@ -80,15 +81,15 @@ class HighwayEnv(AbstractEnv):
         # add some aggressive vehicles in the road
         count_aggressive = 0
         for _ in range(self.config["vehicles_count"]+self.config["num_aggressive"]):
-            # a = np.random.randint(low=1, high=5)
-            # if a==1:
-            #     count_aggressive += 1
-            #     self.road.vehicles.append(vehicles_type2.create_random(self.road))
-            #     if count_aggressive < 3:
-            #         self.road.vehicles.append(vehicles_type3.create_random(self.road))
+            a = np.random.randint(low=1, high=5)
+            if a==1:
+                count_aggressive += 1
+                self.road.vehicles.append(vehicles_type2.create_random(self.road))
+                if count_aggressive < 3:
+                    self.road.vehicles.append(vehicles_type3.create_random(self.road))
                     
-            # else:
-            self.road.vehicles.append(vehicles_type1.create_random(self.road))
+            else:
+                self.road.vehicles.append(vehicles_type1.create_random(self.road))
         
         print("number of aggressive vehicles ",count_aggressive)
 

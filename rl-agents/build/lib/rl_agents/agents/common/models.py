@@ -69,10 +69,6 @@ class MultiLayerPerceptron(BaseModule, Configurable):
                 "out": None}
 
     def forward(self, x):
-        print("x shape 0 is: ", x.shape[0])
-        stop = False
-        if x.shape[0] == 32:
-            stop = True
         if self.config["reshape"]:
             x = x.reshape(x.shape[0], -1)  # We expect a batch of vectors
         for layer in self.layers:

@@ -124,7 +124,7 @@ class LaneGraphics(object):
                 
                 # # set the center of the rectangular object. 
                 textRect.center = (100, 100)
-                print(textRect.center[0] - 70, textRect.center[1])
+                # print(textRect.center[0] - 70, textRect.center[1])
                 surface.blit(text, textRect)
                 
 
