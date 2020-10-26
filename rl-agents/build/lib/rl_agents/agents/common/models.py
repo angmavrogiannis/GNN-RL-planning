@@ -86,9 +86,9 @@ class GraphConvolutionalNetwork(BaseModule, Configurable):
     def __init__(self, config):
         super().__init__()
         Configurable.__init__(self, config)
-        sizes = [self.config["in"]] + self.config["layers"] + [self.config["out"]]
+        sizes = [self.config["in"]] + self.config["layers"]
         self.activation = activation_factory(self.config["activation"])
-        self.dropout = True
+        self.dropout = False
         layers_list = [GCNConv(sizes[i], sizes[i + 1]) for i in range(len(sizes) - 1)]
         self.layers = nn.ModuleList(layers_list)
         if self.config.get("out", None):
@@ -109,7 +109,7 @@ class GraphConvolutionalNetwork(BaseModule, Configurable):
         '''
         return sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2)
 
-    def handleData(self, data, radius=15):
+    def handleData(self, data, radius=5):
         '''
                 Generates the adjacency matrix of a graph.
 
@@ -146,8 +146,8 @@ class GraphConvolutionalNetwork(BaseModule, Configurable):
             x, edge_index = batched_data.x, batched_data.edge_index
             for ind, layer in enumerate(self.layers):
                 x = self.activation(layer(x, edge_index))
-                if ind < len(self.layers) - 1 and self.dropout:
-                    x = F.dropout(x, training=self.training)
+                if ind == len(self.layers) - 1 and self.dropout:
+                    x = F.dropout(x, p=0.5, training=self.training)
             if self.config.get("out", None):
                 x = self.predict(x)
             if out == torch.empty:

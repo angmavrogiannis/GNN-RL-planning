@@ -18,6 +18,7 @@ Options:
   --verbose              Set log level to debug instead of info.
   --repeat <times>       Repeat several times [default: 1].
 """
+import time
 import datetime
 import os
 from pathlib import Path
@@ -37,12 +38,15 @@ VERBOSE_CONFIG = 'configs/verbose.json'
 
 
 def main():
+    start = time.time()
     opts = docopt(__doc__)
     if opts['evaluate']:
         for _ in range(int(opts['--repeat'])):
             evaluate(opts['<environment>'], opts['<agent>'], opts)
     elif opts['benchmark']:
         benchmark(opts)
+    end = time.time()
+    print('Elapsed time:', end - start, 'seconds.')
 
 
 def evaluate(environment_config, agent_config, options):

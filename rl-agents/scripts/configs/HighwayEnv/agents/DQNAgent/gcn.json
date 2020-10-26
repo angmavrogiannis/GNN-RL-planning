@@ -2,7 +2,7 @@
     "__class__": "<class 'rl_agents.agents.deep_q_network.pytorch.DQNAgent'>",
     "model": {
         "type": "GraphConvolutionalNetwork",
-        "layers": [16]
+        "layers": [16, 32, 64]
     },
     "double": false,
     "gamma": 0.8,

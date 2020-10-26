@@ -1,0 +1,6 @@
+[rl_agents.trainer.evaluation:INFO] Loaded DQNAgent model from out/HighwayEnv/DQNAgent/gcn_20201022-100227_7824/checkpoint-best.tar 
+[rl_agents.trainer.evaluation:INFO] Episode 0 score: 8.8 
+[rl_agents.trainer.evaluation:INFO] Episode 1 score: 5.2 
+[rl_agents.trainer.evaluation:INFO] Episode 2 score: 7.7 
+[rl_agents.trainer.evaluation:INFO] Episode 3 score: 22.1 
+[rl_agents.trainer.evaluation:INFO] Episode 4 score: 14.8 
