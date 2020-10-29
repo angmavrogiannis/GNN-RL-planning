@@ -16,13 +16,13 @@ class HighwayEnv(AbstractEnv):
         staying on the rightmost lanes and avoiding collisions.
     """
 
-    COLLISION_REWARD = -20
+    COLLISION_REWARD = -10
     """ The reward received when colliding with a vehicle."""
-    RIGHT_LANE_REWARD = 0
+    RIGHT_LANE_REWARD = 0.2
     """ The reward received when driving on the right-most lanes, linearly mapped to zero for other lanes."""
-    HIGH_VELOCITY_REWARD = 0.7
+    HIGH_VELOCITY_REWARD = 1
     """ The reward received when driving at full speed, linearly mapped to zero for lower speeds."""
-    LANE_CHANGE_REWARD = 0.2
+    LANE_CHANGE_REWARD = 0.5
     """ The reward received at each lane change action."""
 
     def default_config(self):
@@ -38,7 +38,7 @@ class HighwayEnv(AbstractEnv):
             "aggressive_vehicle_type": "highway_env.vehicle.behavior.AggressiveCar",
             "aggressive_vehicle_type2": "highway_env.vehicle.behavior.VeryAggressiveCar",
             "num_aggressive": 0,
-            "duration": 30,  # [s]
+            "duration": 40,  # [s]
             "initial_spacing": 1,
             "collision_reward": self.COLLISION_REWARD
         })

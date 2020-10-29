@@ -109,7 +109,7 @@ class GraphConvolutionalNetwork(BaseModule, Configurable):
         '''
         return sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2)
 
-    def handleData(self, data, radius=5):
+    def handleData(self, data, radius=10):
         '''
                 Generates the adjacency matrix of a graph.
 
